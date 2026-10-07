@@ -8,6 +8,8 @@ from pytest import raises
 
 from googletrans import Translator
 
+pytestmark = pytest.mark.live
+
 
 @pytest.mark.asyncio
 async def test_bind_multiple_service_urls():

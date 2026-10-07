@@ -53,12 +53,15 @@ class Translator:
     :param user_agent: the User-Agent header to send when making requests.
     :type user_agent: :class:`str`
 
-    :param proxy: httpx proxy configuration.
-
-    :param timeout: Definition of timeout for httpx library.
-                    Will be used for every request.
-    :type timeout: number or a double of numbers
-    :param raise_exception: if `True` then raise exception if smth will go wrong
+    :param transport: HTTP transport to use: 'auto' (default: uses curl-cffi if installed,
+                      falling back to httpx), 'curl' (requires curl-cffi), or 'httpx'.
+    :type transport: :class:`str`
+    :param impersonate: Browser TLS/JA3/HTTP2 fingerprint to impersonate when using curl-cffi.
+                        Defaults to 'chrome'.
+    :type impersonate: :class:`str`
+    :param proxy: proxy configuration.
+    :param timeout: Definition of timeout.
+    :param raise_exception: if `True` then raise exception if something goes wrong.
     :type raise_exception: boolean
     """
 
@@ -71,8 +74,30 @@ class Translator:
         timeout: typing.Optional[Timeout] = None,
         http2: bool = True,
         list_operation_max_concurrency: int = 2,
+        transport: typing.Literal["auto", "curl", "httpx"] = "auto",
+        impersonate: str = "chrome",
     ):
-        if CURL_AVAILABLE:
+        if transport not in ("auto", "curl", "httpx"):
+            raise ValueError(
+                f"Invalid transport: '{transport}'. Must be one of 'auto', 'curl', 'httpx'."
+            )
+
+        if transport == "curl":
+            if not CURL_AVAILABLE:
+                raise ImportError(
+                    "curl_cffi is required when transport='curl'. "
+                    "Install it via `pip install curl_cffi`."
+                )
+            use_curl = True
+        elif transport == "httpx":
+            use_curl = False
+        else:  # transport == "auto"
+            use_curl = CURL_AVAILABLE
+
+        self.transport = "curl" if use_curl else "httpx"
+        self.impersonate = impersonate
+
+        if use_curl:
             timeout_sec = None
             if timeout is not None:
                 if isinstance(timeout, httpx.Timeout):
@@ -83,7 +108,7 @@ class Translator:
                     timeout_sec = 0.001
 
             session_kwargs: typing.Dict[str, typing.Any] = {
-                "impersonate": "chrome",
+                "impersonate": impersonate,
                 "headers": {
                     "User-Agent": user_agent,
                 },
@@ -141,11 +166,15 @@ class Translator:
     async def __aenter__(self):
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
+    async def aclose(self):
+        """Close underlying HTTP client session."""
         if hasattr(self.client, "aclose"):
             await self.client.aclose()
         elif hasattr(self.client, "close"):
             await self.client.close()
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.aclose()
 
     async def _translate(
         self, text: str, dest: str, src: str, override: typing.Dict[str, typing.Any]

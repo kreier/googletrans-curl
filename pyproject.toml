@@ -1,45 +1,72 @@
 [project]
-name = "googletrans"
+name = "googletrans-curl"
 version = "4.0.3"
-description = "An unofficial Google Translate API for Python"
-readme = "README.rst"
+description = "A drop-in replacement for googletrans using curl-cffi to prevent HTTP 429 rate limits"
+readme = "README.md"
 requires-python = ">=3.8"
-dependencies = ["curl_cffi>=0.7.0", "httpx[http2]>=0.27.2"]
+dependencies = [
+    "curl_cffi>=0.7.0",
+    "httpx[http2]>=0.27.2",
+]
 classifiers = [
-  "Development Status :: 5 - Production/Stable",
-  "Intended Audience :: Education",
-  "Intended Audience :: End Users/Desktop",
-  "License :: OSI Approved :: MIT License",
-  "Operating System :: POSIX",
-  "Operating System :: Microsoft :: Windows",
-  "Operating System :: MacOS :: MacOS X",
-  "Topic :: Education",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Education",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS :: MacOS X",
+    "Topic :: Education",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "pytest-asyncio", "pytest-cov", "ruff>=0.7"]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff>=0.7",
+]
 
-[tool.setuptools]
-license-files = ["LICENSE"]
+[tool.hatch.build.targets.wheel]
+packages = ["googletrans"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/googletrans",
+    "/LICENSE",
+    "/README.md",
+    "/pyproject.toml",
+]
 
 [tool.uv]
-dev-dependencies = ["pytest", "pytest-asyncio", "pytest-cov", "ruff>=0.7"]
+dev-dependencies = [
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "ruff>=0.7",
+]
 
 [project.scripts]
-translate = "googletrans:translate"
+translate = "googletrans.cli:main"
 
 [project.urls]
-homepage = "https://github.com/ssut/py-googletrans"
+Homepage = "https://github.com/kreier/googletrans-curl"
+Repository = "https://github.com/kreier/googletrans-curl"
+Issues = "https://github.com/kreier/googletrans-curl/issues"
+Upstream = "https://github.com/ssut/py-googletrans"
 
 [[project.authors]]
 name = "Suhun Han"
 email = "suhunhankr@gmail.com"
+
+[[project.maintainers]]
+name = "Klaus Kreier"
 
 [build-system]
 requires = ["hatchling"]
