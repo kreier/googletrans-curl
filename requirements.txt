@@ -6,6 +6,10 @@ certifi==2024.8.30
     # via
     #   httpcore
     #   httpx
+cffi>=2.0.0
+    # via curl_cffi
+curl_cffi>=0.7.0
+    # via py-googletrans (pyproject.toml)
 h11==0.16.0
     # via httpcore
 h2==4.1.0

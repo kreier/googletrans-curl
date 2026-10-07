@@ -1,10 +1,10 @@
 [project]
 name = "googletrans"
-version = "4.0.2"
+version = "4.0.3"
 description = "An unofficial Google Translate API for Python"
 readme = "README.rst"
 requires-python = ">=3.8"
-dependencies = ["httpx[http2]>=0.27.2"]
+dependencies = ["curl_cffi>=0.7.0", "httpx[http2]>=0.27.2"]
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Education",

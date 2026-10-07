@@ -10,7 +10,7 @@ import re
 import typing
 
 import httpx
-from httpx import Response, Timeout
+from httpx import ConnectTimeout, Response, Timeout
 from httpx._types import ProxyTypes
 
 from googletrans import urls, utils
@@ -27,6 +27,17 @@ from googletrans.gtoken import TokenAcquirer
 from googletrans.models import Detected, Translated
 
 EXCLUDES = ("en", "ca", "fr")
+
+
+try:
+    from curl_cffi.requests import AsyncSession
+    from curl_cffi.requests.exceptions import RequestException as CurlRequestException
+    from curl_cffi.requests.exceptions import Timeout as CurlTimeout
+    CURL_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    CURL_AVAILABLE = False
+    CurlRequestException = Exception
+    CurlTimeout = Exception
 
 
 class Translator:
@@ -61,22 +72,47 @@ class Translator:
         http2: bool = True,
         list_operation_max_concurrency: int = 2,
     ):
-        self.client = httpx.AsyncClient(
-            http2=http2,
-            proxy=proxy,
-            headers={
-                "User-Agent": user_agent,
-            },
-        )
+        if CURL_AVAILABLE:
+            timeout_sec = None
+            if timeout is not None:
+                if isinstance(timeout, httpx.Timeout):
+                    timeout_sec = timeout.connect or timeout.read
+                else:
+                    timeout_sec = float(timeout)
+                if timeout_sec is not None and 0 < timeout_sec < 0.001:
+                    timeout_sec = 0.001
+
+            session_kwargs: typing.Dict[str, typing.Any] = {
+                "impersonate": "chrome",
+                "headers": {
+                    "User-Agent": user_agent,
+                },
+            }
+            if timeout_sec is not None:
+                session_kwargs["timeout"] = timeout_sec
+            if isinstance(proxy, str):
+                session_kwargs["proxy"] = proxy
+            elif isinstance(proxy, dict):
+                session_kwargs["proxies"] = proxy
+
+            self.client = AsyncSession(**session_kwargs)
+            self.client.aclose = self.client.close
+        else:
+            self.client = httpx.AsyncClient(
+                http2=http2,
+                proxy=proxy,
+                headers={
+                    "User-Agent": user_agent,
+                },
+            )
+            if timeout is not None:
+                self.client.timeout = timeout
 
         self.service_urls = ["translate.google.com"]
         self.client_type = "webapp"
         self.token_acquirer = TokenAcquirer(
             client=self.client, host=self.service_urls[0]
         )
-
-        if timeout is not None:
-            self.client.timeout = timeout
 
         if service_urls:
             # default way of working: use the defined values from user app
@@ -106,11 +142,14 @@ class Translator:
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        await self.client.aclose()
+        if hasattr(self.client, "aclose"):
+            await self.client.aclose()
+        elif hasattr(self.client, "close"):
+            await self.client.close()
 
     async def _translate(
         self, text: str, dest: str, src: str, override: typing.Dict[str, typing.Any]
-    ) -> typing.Tuple[typing.List[typing.Any], Response]:
+    ) -> typing.Tuple[typing.List[typing.Any], typing.Any]:
         token = "xxxx"  # dummy default value here as it is not used by api client
         if self.client_type == "webapp":
             token = await self.token_acquirer.do(text)
@@ -125,7 +164,14 @@ class Translator:
         )
 
         url = urls.TRANSLATE.format(host=self._pick_service_url())
-        r = await self.client.get(url, params=params)
+        try:
+            r = await self.client.get(url, params=params)
+        except (CurlTimeout, httpx.TimeoutException) as exc:
+            raise ConnectTimeout(str(exc)) from exc
+        except CurlRequestException as exc:
+            if "timeout" in str(exc).lower() or "timed out" in str(exc).lower():
+                raise ConnectTimeout(str(exc)) from exc
+            raise
 
         if r.status_code == 200:
             data = utils.format_json(r.text)
@@ -162,7 +208,7 @@ class Translator:
 
         url = urls.TRANSLATE.format(host=self._pick_service_url())
 
-        return self.client.build_request("GET", url, params=params)
+        return httpx.Request("GET", url, params=params)
 
     def _parse_extra_data(
         self, data: typing.List[typing.Any]
