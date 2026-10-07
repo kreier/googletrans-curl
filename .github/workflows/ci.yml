@@ -24,7 +24,7 @@ jobs:
         run: uv sync --all-extras --dev
       - name: Run tests with coverage
         run: |
-          uv run python -m pytest --cov=googletrans --cov-report=xml
+          uv run python -m pytest -m "not live" --cov=googletrans --cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
