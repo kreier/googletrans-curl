@@ -1,10 +1,10 @@
 # Roadmap
 
-This roadmap outlines the path from initial fork foundation to the stable **5.0.0** release.
+This roadmap outlines the path from initial fork foundation to the stable **4.3.0** release.
 
 ---
 
-## 4.0.3 — Initial Working Release (Current)
+## 4.0.3 — Initial Working Release (Completed)
 
 **Goal:** Establish `googletrans-curl` as a working, drop-in replacement on PyPI for community testing.
 
@@ -31,23 +31,25 @@ This roadmap outlines the path from initial fork foundation to the stable **5.0.
   - [x] Audit open pull requests in `ssut/py-googletrans` for viable enhancements (#449, #450, #451, #452, #453, #454, #455).
   - [x] Implement clean PRs with proper tests and credit (PR #450 language codes with backwards-compatible aliasing).
 - [x] Improve error reporting and timeout diagnostics across both transports (`RateLimitError`, `TranslationError`, warning diagnostics).
+- [x] Correct maintainer name attribution to Matthias Kreier and add PyPI badge.
+- [x] Automate CI test matrix across Python 3.8-3.13 and add automated release workflow.
 
 ---
 
 ## 4.2.0 — Fork Ecosystem Mining
 
-**Goal:** Investigate improvements and patches across the 740 forks of `py-googletrans`.
+**Goal:** Investigate improvements and patches across the ~740 forks of `py-googletrans`, documenting community history and inspiration for possible changes.
 
-- [ ] Analyze most starred and active forks of `ssut/py-googletrans`.
-- [ ] Identify recurring patterns and community fixes:
+- [ ] Analyze the most starred and active forks of `ssut/py-googletrans`.
+- [ ] Document community history, recurring patterns, and inspiration:
   - Alternative endpoint routing (`translate.googleapis.com` vs webapp).
-  - Bulk translation optimizations and concurrency improvements.
-  - Proxy and network resiliency enhancements.
+  - Bulk translation optimizations and concurrency patterns.
+  - Proxy and network resiliency strategies.
 - [ ] Incorporate verified improvements into `googletrans-curl` with regression tests.
 
 ---
 
-## 4.3.0 — Transport Architecture Refinement
+## 4.2.1 — Transport Architecture Refinement
 
 **Goal:** Formalize the modular transport architecture.
 
@@ -60,10 +62,13 @@ This roadmap outlines the path from initial fork foundation to the stable **5.0.
 
 ---
 
-## 5.0.0 — Stable Milestone Release
+## 4.3.0 — Stable Milestone Release
 
-**Goal:** First major stable release of `googletrans-curl`.
+**Goal:** First major stable release of `googletrans-curl` following real-world community feedback.
 
+The `4.3.0` milestone signifies a battle-tested release newer than upstream `4.0.2` while retaining complete API backwards compatibility with 4.x async codebases.
+
+- [ ] Stabilization period without new bug reports or regressions.
 - [ ] Complete test suite passing across all supported Python versions (3.8 - 3.13).
 - [ ] Full compatibility test matrix across Linux, macOS, and Windows.
 - [ ] Comprehensive documentation with architecture diagrams, usage guides, and known web API limitations.
