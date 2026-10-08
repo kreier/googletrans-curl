@@ -7,7 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [4.1.0] - 2026-10-08
+
+### Added
+- **Synchronous Translator Wrapper (`SyncTranslator`)**: Added `SyncTranslator` and convenience methods `Translator.translate_sync()` / `Translator.detect_sync()` to seamlessly support blocking codebases and scripts without requiring manual `asyncio.run()` loops (resolves upstream Issue #451).
+- **Modern ISO 639-1 Language Code Support**: Integrated updated ISO 639-1 two-letter and BCP-47 language codes from community PR #450 (e.g. `ab`, `aa`, `ba`, `br`, `ce`, `ch`, `cv`, `dz`, `fo`, `fj`, `ff`, `kl`, `kr`, `kg`, `kv`, `li`, `gv`, `mh`, `nr`, `oc`, `os`, `rn`, `se`, `sg`, `ss`, `ty`, `bo`, `to`, `tn`, `tyv`, `ve`, `wo`, `lua`, `sat-Latn`, `crh-Latn`, etc.).
+- **100% Backward-Compatible Language Aliasing**: Retained legacy 3-letter codes (`abk`, `aar`, `bak`, etc.) as aliases in `LANGUAGES` to prevent breaking existing codebases.
+- **Informative Error Types & Diagnostics**:
+  - Added `TranslationError` base exception and `RateLimitError` (HTTP 429) subclass with clear status codes, error snippets, and actionable resolution suggestions.
+  - Added informative logging warnings when `raise_exception=False` encounters non-200 responses.
+- **Fallback Language Detection**:
+  - Implemented neural model tag inspection fallback (`data[0][0][8]`) when Google's `gtx` endpoint fails to detect CJK/Traditional Chinese and returns the target language (resolves upstream Issue #446).
+- **Dialect & Script Normalization**: Enhanced language code sanitizer to preserve dialect scripts and region subtags (`zh-cn`, `zh-tw`, `zh_cn`, `zh_tw`, etc.).
+
+### Fixed
+- Fixed upstream Issue #446: Corrected detection of Traditional Chinese text (`我想檢查一下它是否正常運作。`) which previously was misclassified as `en`.
+- Fixed upstream Issue #457: Clear error diagnostics when HTTP 429/403 errors occur instead of silent fallback returning original text without explanation.
+- Fixed upstream PR #450: Corrected `SPECIAL_CASES` mapping `ee` (Ewe) to `et` (Estonian); `ee` is now properly mapped to Ewe and `et` to Estonian.
+- Regression-tested upstream Issue #448: Verified text with backticks and markdown symbols formats without extraneous prefix symbols.
+- Regression-tested upstream Issue #447: CLI `translate` verified working deterministically.
 
 ---
 

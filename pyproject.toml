@@ -1,6 +1,6 @@
 [project]
 name = "googletrans-curl"
-version = "4.0.3"
+version = "4.1.0"
 description = "A drop-in replacement for googletrans using curl-cffi to prevent HTTP 429 rate limits"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -44,8 +44,8 @@ include = [
     "/pyproject.toml",
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",
@@ -66,7 +66,7 @@ name = "Suhun Han"
 email = "suhunhankr@gmail.com"
 
 [[project.maintainers]]
-name = "Klaus Kreier"
+name = "Matthias Kreier"
 
 [build-system]
 requires = ["hatchling"]

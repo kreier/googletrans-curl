@@ -10,7 +10,7 @@
 - **Baseline Commit:** `db0567f89d3201b787074cc1c53418763d5e6bcc` (April 25, 2025)
 - **Baseline Version:** `4.0.2`
 - **Original Author:** SuHun Han (`suhunhankr@gmail.com`)
-- **Fork Maintainer:** Klaus Kreier (`https://github.com/kreier`)
+- **Fork Maintainer:** Matthias Kreier (`https://github.com/kreier`)
 
 ---
 
@@ -26,4 +26,4 @@ Upstream `googletrans` uses `httpx` directly to communicate with Google Translat
 
 This project continues to be licensed under the **MIT License**, consistent with the upstream repository.
 
-Original copyright belongs to SuHun Han (2015). Enhancements and modifications are copyright (c) 2026 Klaus Kreier and contributors.
+Original copyright belongs to SuHun Han (2015). Enhancements and modifications are copyright (c) 2026 Matthias Kreier and contributors.

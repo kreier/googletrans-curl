@@ -19,18 +19,18 @@ This roadmap outlines the path from initial fork foundation to the stable **5.0.
 
 ---
 
-## 4.1.0 — Upstream Issue & PR Triage
+## 4.1.0 — Upstream Issue & PR Triage (Completed)
 
 **Goal:** Tackle pending upstream bugs and evaluate community pull requests.
 
-- [ ] **Triage 5 pending upstream issues:**
-  - Investigate open issues in `ssut/py-googletrans` (e.g. edge-case character encoding, language detection anomalies).
-  - Add regression tests for confirmed bugs.
-  - Fix validated issues in `googletrans-curl`.
-- [ ] **Review 6 open pull requests:**
-  - Audit open pull requests in `ssut/py-googletrans` for still-viable enhancements and bugfixes.
-  - Cherry-pick or re-implement clean PRs with proper tests and credit.
-- [ ] Improve error reporting and timeout diagnostics across both transports.
+- [x] **Triage 5 pending upstream issues:**
+  - [x] Investigate open issues in `ssut/py-googletrans` (edge-case character encoding, language detection anomalies).
+  - [x] Add regression tests for confirmed bugs.
+  - [x] Fix validated issues in `googletrans-curl` (#446 Traditional Chinese detection, #447 CLI async, #451 sync support, #457 rate-limit diagnostics).
+- [x] **Review 6 open pull requests:**
+  - [x] Audit open pull requests in `ssut/py-googletrans` for viable enhancements (#449, #450, #451, #452, #453, #454, #455).
+  - [x] Implement clean PRs with proper tests and credit (PR #450 language codes with backwards-compatible aliasing).
+- [x] Improve error reporting and timeout diagnostics across both transports (`RateLimitError`, `TranslationError`, warning diagnostics).
 
 ---
 

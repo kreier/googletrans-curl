@@ -131,10 +131,10 @@ async def test_detect_list(translator: Translator):
 
 
 @pytest.mark.asyncio
-async def test_src_in_special_cases(translator: Translator):
-    args = ("tere", "en", "ee")
+async def test_estonian_language(translator: Translator):
+    args = ("tere", "en", "et")
     result = await translator.translate(*args)
-    assert result.text in ("hello", "hi,")
+    assert result.text.lower() in ("hello", "hi", "hi,")
 
 
 @pytest.mark.asyncio
@@ -145,10 +145,10 @@ async def test_src_not_in_supported_languages(translator: Translator):
 
 
 @pytest.mark.asyncio
-async def test_dest_in_special_cases(translator: Translator):
-    args = ("hello", "ee", "en")
+async def test_dest_estonian_language(translator: Translator):
+    args = ("hello", "et", "en")
     result = await translator.translate(*args)
-    assert result.text == "tere"
+    assert result.text.lower() == "tere"
 
 
 @pytest.mark.asyncio

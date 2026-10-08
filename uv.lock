@@ -509,7 +509,7 @@ wheels = [
 
 [[package]]
 name = "googletrans-curl"
-version = "4.0.3"
+version = "4.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "curl-cffi", version = "0.9.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },

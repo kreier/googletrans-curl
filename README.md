@@ -1,5 +1,6 @@
 # googletrans-curl
 
+[![PyPI version](https://img.shields.io/pypi/v/googletrans-curl.svg)](https://pypi.org/project/googletrans-curl/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
 [![GitHub Repo](https://img.shields.io/badge/github-kreier%2Fgoogletrans--curl-blue.svg)](https://github.com/kreier/googletrans-curl)
@@ -111,6 +112,21 @@ async def main():
         print(result.text)  # "truth is my light"
 
 asyncio.run(main())
+```
+
+### Synchronous Usage (`SyncTranslator`)
+
+For synchronous scripts, command-line utilities, or legacy codebases that do not use `async`/`await`:
+
+```python
+from googletrans import SyncTranslator
+
+with SyncTranslator() as translator:
+    result = translator.translate("안녕하세요.", dest="en")
+    print(result.text)  # "Hello."
+
+    detected = translator.detect("Bonjour tout le monde")
+    print(detected.lang)  # "fr"
 ```
 
 ---
@@ -227,4 +243,4 @@ translate -c "안녕하세요."
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-Upstream copyright (c) 2015 SuHun Han. Modifications copyright (c) 2026 Klaus Kreier and contributors.
+Upstream copyright (c) 2015 SuHun Han. Modifications copyright (c) 2026 Matthias Kreier and contributors.
