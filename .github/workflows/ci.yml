@@ -17,16 +17,18 @@ jobs:
         uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-          cache-dependency-glob: "requirements**.txt"
+          cache-dependency-glob: "uv.lock"
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
       - name: Install dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras --all-groups
       - name: Run tests with coverage
         run: |
           uv run python -m pytest -m "not live" --cov=googletrans --cov-report=xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
+        continue-on-error: true
         with:
           files: ./coverage.xml
           token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
