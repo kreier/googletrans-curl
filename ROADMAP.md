@@ -15,7 +15,7 @@ This roadmap outlines the path from initial fork foundation to the stable **5.0.
 - [x] Fix async command-line tool `translate` (`googletrans.cli`).
 - [x] Create core documentation: `AGENTS.md`, `CHANGELOG.md`, `ROADMAP.md`, `UPSTREAM.md`, and modernized `README.md`.
 - [x] Separate deterministic unit tests from live integration tests.
-- [ ] Publish 4.0.3 to PyPI for public testing and feedback.
+- [x] Publish 4.0.3 to PyPI for public testing and feedback.
 
 ---
 
