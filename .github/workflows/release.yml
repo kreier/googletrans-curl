@@ -1,9 +1,12 @@
 name: Release & Publish
 
 on:
+  push:
+    tags:
+      - "v*"
   release:
     types: [published]
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 jobs:
   build-and-publish:
@@ -26,8 +29,8 @@ jobs:
         run: uv build
 
       - name: Upload artifacts to GitHub Release
-        if: github.event_name == "release"
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
         with:
           files: dist/*
 
