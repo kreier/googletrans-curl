@@ -21,11 +21,36 @@ pip uninstall googletrans
 pip install googletrans-curl
 ```
 
-Existing applications continue importing `googletrans` with **zero code modifications**:
+### 1. For Async Codebases (googletrans v4.x)
+Existing async applications continue importing `googletrans` with **zero code modifications**:
 
 ```python
 from googletrans import Translator
+
+# Async/await functions exactly as before, with curl-cffi anti-429 protection
+async with Translator() as translator:
+    result = await translator.translate("Hello world", dest="ko")
 ```
+
+### 2. For Synchronous Codebases (googletrans v3.x legacy)
+Upstream `googletrans` v4 broke backwards compatibility by turning `Translator.translate()` into an `async` coroutine, which broke thousands of synchronous scripts and legacy applications.
+
+`googletrans-curl` provides a full synchronous drop-in implementation (`SyncTranslator`). Legacy v3.x synchronous code requires **only a single line change in the import**:
+
+```python
+# Change this import:
+# from googletrans import Translator
+
+# To this:
+from googletrans import SyncTranslator as Translator
+
+# Your existing synchronous code continues to function with zero modifications:
+translator = Translator()
+result = translator.translate("Hello world", dest="ko")
+print(result.text)  # "안녕하세요."
+```
+
+No `async`/`await` refactoring, no event loop management, and no boilerplate required!
 
 ---
 
@@ -118,6 +143,24 @@ asyncio.run(main())
 
 For synchronous scripts, command-line utilities, or legacy codebases that do not use `async`/`await`:
 
+#### Option A: 1-Line Drop-in for Legacy v3.x Codebases
+If migrating an existing script or codebase written for `googletrans` 3.x, simply alias the import:
+
+```python
+from googletrans import SyncTranslator as Translator
+
+# Direct instantiation without context manager or async loop:
+translator = Translator()
+result = translator.translate("안녕하세요.", dest="en")
+print(result.text)  # "Hello."
+
+detected = translator.detect("Bonjour tout le monde")
+print(detected.lang)  # "fr"
+```
+
+#### Option B: Context Manager (Recommended for Synchronous Workflows)
+Using `with SyncTranslator()` ensures immediate deterministic cleanup of network sessions:
+
 ```python
 from googletrans import SyncTranslator
 
@@ -127,6 +170,17 @@ with SyncTranslator() as translator:
 
     detected = translator.detect("Bonjour tout le monde")
     print(detected.lang)  # "fr"
+```
+
+#### Option C: Convenience Synchronous Methods on `Translator`
+If you already have a `Translator` instance or are calling synchronous logic from within an async codebase:
+
+```python
+from googletrans import Translator
+
+translator = Translator()
+result = translator.translate_sync("Hello world", dest="es")
+print(result.text)  # "Hola mundo"
 ```
 
 ---

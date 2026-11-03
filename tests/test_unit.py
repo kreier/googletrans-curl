@@ -213,6 +213,40 @@ def test_sync_translator_translate_and_detect():
             assert det.confidence == 0.95
 
 
+def test_sync_translator_legacy_dropin_v3_compatibility():
+    """Verify `from googletrans import SyncTranslator as Translator` works as a drop-in for v3.x code."""
+    from googletrans import SyncTranslator as Translator
+
+    mock_trans_body = json.dumps([
+        [["Hola", "Hello", None, None, 1]],
+        None,
+        "en",
+    ])
+
+    class MockResponse:
+        def __init__(self, text):
+            self.status_code = 200
+            self.text = text
+
+    # Standard v3.x pattern: instantiate directly without context manager, pass legacy `proxies` kwarg
+    translator = Translator(transport="httpx", proxies="http://localhost:8080")
+    assert translator.service_urls == ["translate.googleapis.com"]
+    assert translator.client_type == "gtx"
+    assert translator.transport == "httpx"
+    assert translator.raise_exception is False
+
+    with patch.object(
+        translator._async_translator.client,
+        "get",
+        new=AsyncMock(return_value=MockResponse(mock_trans_body)),
+    ):
+        res = translator.translate("Hello", dest="es", src="en")
+        assert res.text == "Hola"
+        assert res.dest == "es"
+
+    translator.close()
+
+
 @pytest.mark.asyncio
 async def test_translator_sync_convenience_methods():
     translator = Translator(transport="curl")

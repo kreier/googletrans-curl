@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Synchronous Translator Wrapper (`SyncTranslator`)**: Added `SyncTranslator` and convenience methods `Translator.translate_sync()` / `Translator.detect_sync()` to seamlessly support blocking codebases and scripts without requiring manual `asyncio.run()` loops (resolves upstream Issue #451).
+- **1-Line v3.x Synchronous Drop-in Migration**: Documented `from googletrans import SyncTranslator as Translator` in `README.md` and `docs/index.rst`, enabling legacy `googletrans` 3.x code to run without modifying function signatures or translating code to `async`/`await`.
+- **Legacy `proxies` Keyword Argument Compatibility**: Supported `proxies` as alias to `proxy` in both `Translator` and `SyncTranslator` for drop-in compatibility with legacy v3.x initialization.
+- **`SyncTranslator` Property Forwarding**: Forwarded properties (`service_urls`, `client_type`, `raise_exception`, `transport`, `impersonate`) to `SyncTranslator`.
 - **Modern ISO 639-1 Language Code Support**: Integrated updated ISO 639-1 two-letter and BCP-47 language codes from community PR #450 (e.g. `ab`, `aa`, `ba`, `br`, `ce`, `ch`, `cv`, `dz`, `fo`, `fj`, `ff`, `kl`, `kr`, `kg`, `kv`, `li`, `gv`, `mh`, `nr`, `oc`, `os`, `rn`, `se`, `sg`, `ss`, `ty`, `bo`, `to`, `tn`, `tyv`, `ve`, `wo`, `lua`, `sat-Latn`, `crh-Latn`, etc.).
 - **100% Backward-Compatible Language Aliasing**: Retained legacy 3-letter codes (`abk`, `aar`, `bak`, etc.) as aliases in `LANGUAGES` to prevent breaking existing codebases.
 - **Informative Error Types & Diagnostics**:

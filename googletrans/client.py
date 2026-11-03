@@ -100,7 +100,11 @@ class Translator:
         list_operation_max_concurrency: int = 2,
         transport: typing.Literal["auto", "curl", "httpx"] = "auto",
         impersonate: str = "chrome",
+        proxies: typing.Optional[typing.Any] = None,
     ):
+        if proxies is not None and proxy is None:
+            proxy = proxies
+
         if transport not in ("auto", "curl", "httpx"):
             raise ValueError(
                 f"Invalid transport: '{transport}'. Must be one of 'auto', 'curl', 'httpx'."
@@ -600,7 +604,11 @@ class SyncTranslator:
         list_operation_max_concurrency: int = 2,
         transport: typing.Literal["auto", "curl", "httpx"] = "auto",
         impersonate: str = "chrome",
+        proxies: typing.Optional[typing.Any] = None,
     ):
+        if proxies is not None and proxy is None:
+            proxy = proxies
+
         self._loop = asyncio.new_event_loop()
         self._thread = threading.Thread(target=self._loop.run_forever, daemon=True)
         self._thread.start()
@@ -620,6 +628,26 @@ class SyncTranslator:
 
         future = asyncio.run_coroutine_threadsafe(_init_client(), self._loop)
         self._async_translator = future.result()
+
+    @property
+    def service_urls(self) -> typing.List[str]:
+        return self._async_translator.service_urls
+
+    @property
+    def client_type(self) -> str:
+        return self._async_translator.client_type
+
+    @property
+    def raise_exception(self) -> bool:
+        return self._async_translator.raise_exception
+
+    @property
+    def transport(self) -> str:
+        return self._async_translator.transport
+
+    @property
+    def impersonate(self) -> str:
+        return self._async_translator.impersonate
 
     def _run_coroutine(self, coro: typing.Coroutine) -> typing.Any:
         future = asyncio.run_coroutine_threadsafe(coro, self._loop)

@@ -1,156 +1,169 @@
 ===============================================================
-Googletrans: Free and Unlimited Google translate API for Python
+Googletrans-curl: Free and Unlimited Google Translate API for Python
 ===============================================================
 
-.. image:: https://img.shields.io/github/license/mashape/apistatus.svg
-   :target: http://opensource.org/licenses/MIT
-.. image:: https://travis-ci.org/ssut/py-googletrans.svg?branch=master
-   :target: https://travis-ci.org/ssut/py-googletrans
-.. image:: https://readthedocs.org/projects/py-googletrans/badge/?version=latest
-   :target: https://readthedocs.org/projects/py-googletrans/?badge=latest
-.. image:: https://badge.fury.io/py/googletrans.svg
-   :target: http://badge.fury.io/py/googletrans
-.. image:: https://coveralls.io/repos/github/ssut/py-googletrans/badge.svg
-   :target: https://coveralls.io/github/ssut/py-googletrans
-.. image:: https://codeclimate.com/github/ssut/py-googletrans/badges/gpa.svg
-   :target: https://codeclimate.com/github/ssut/py-googletrans
+.. image:: https://img.shields.io/pypi/v/googletrans-curl.svg
+   :target: https://pypi.org/project/googletrans-curl/
+.. image:: https://img.shields.io/badge/License-MIT-yellow.svg
+   :target: https://opensource.org/licenses/MIT
+.. image:: https://img.shields.io/badge/python-3.8%2B-blue.svg
+   :target: https://www.python.org/
 
-Googletrans is a **free** and **unlimited** python library that
-implemented Google Translate API. This uses the `Google Translate Ajax
-API <https://translate.google.com>`__ to make calls to such methods as
-detect and translate.
+Googletrans-curl is a fast, drop-in replacement fork of `googletrans <https://github.com/ssut/py-googletrans>`_
+that integrates `curl-cffi <https://github.com/lexiforest/curl_cffi>`_ to eliminate Google Translate
+**HTTP 429 Too Many Requests** and rate-limiting blocks via browser TLS fingerprint impersonation.
+
+The package maintains full backward compatibility:
+- Modern asynchronous API (compatible with googletrans v4.x).
+- Synchronous drop-in wrapper (compatible with googletrans v3.x legacy scripts).
 
 --------
 Features
 --------
 
--  Fast and reliable - it uses the same servers that
-   translate.google.com uses
--  Auto language detection
--  Bulk translations
--  Customizable service URL
--  Connection pooling (the advantage of using requests.Session)
--  HTTP/2 support
+- Fast and reliable - uses Google Translate endpoints with browser impersonation
+- Auto language detection and confidence scoring
+- Bulk translations (translate multiple strings in one call)
+- Anti-429 protection using ``curl-cffi`` (default: Chrome TLS fingerprint)
+- Pluggable transports: ``curl`` (default) and standard ``httpx``
+- Async-first architecture with synchronous fallback (``SyncTranslator``)
+- Customizable service URLs (e.g. ``translate.google.com``, ``translate.googleapis.com``)
 
 ~~~~~~~~~~~~~~~~~~~~~
 Note on library usage
 ~~~~~~~~~~~~~~~~~~~~~
 
--  The maximum character limit on a single text is 15k.
-
--  Due to limitations of the web version of google translate, this API
-   does not guarantee that the library would work properly at all times.
-   (so please use this library if you don't care about stability.)
-
--  If you want to use a stable API, I highly recommend you to use
-   `Google's official translate
-   API <https://cloud.google.com/translate/docs>`__.
-
--  If you get HTTP 5xx error or errors like #6, it's probably because
-   Google has banned your client IP address.
+- The maximum character limit on a single text is ~15k characters.
+- Due to limitations of the web version of google translate, this API does not guarantee that the library would work properly at all times.
+- If you want to use a stable API with guaranteed SLAs, consider using `Google Cloud Translation API <https://cloud.google.com/translate/docs>`__.
 
 ----------
 Quickstart
 ----------
 
-You can install it from PyPI_:
+Install the drop-in replacement from PyPI:
 
 .. sourcecode:: bash
 
-   $ pip install googletrans
+   $ pip install googletrans-curl
 
-.. _PyPI: https://pypi.python.org/pypi/googletrans
+Existing code continues using the same import namespace: ``googletrans``.
 
-~~~~~~~~~~~~~~
-HTTP/2 support
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Drop-in Replacement for Legacy Synchronous Code (v3.x Migration)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This is a great deal for everyone! (up to 2x times faster in my test) If
-you want to get googletrans faster you should install
-`hyper <https://github.com/Lukasa/hyper>`__ package. Googletrans will
-automatically detect if hyper is installed and if so, it will be used
-for http networking.
+Upstream ``googletrans`` v4 broke backwards compatibility by converting ``Translator.translate()``
+into an ``async`` coroutine.
 
-~~~~~~~~~~~
-Basic Usage
-~~~~~~~~~~~
-
-If source language is not given, google translate attempts to detect the
-source language.
+In ``googletrans-curl``, legacy synchronous codebases can continue running with **just a single change to the import line**:
 
 .. code-block:: python
 
-   >>> from googletrans import Translator
-   >>> translator = Translator()
-   >>> translator.translate('안녕하세요.')
-   # <Translated src=ko dest=en text=Good evening. pronunciation=Good evening.>
+   # Replace: from googletrans import Translator
+   from googletrans import SyncTranslator as Translator
 
-   >>> translator.translate('안녕하세요.', dest='ja')
-   # <Translated src=ko dest=ja text=こんにちは。 pronunciation=Kon'nichiwa.>
+   # Existing synchronous code works without any further changes:
+   translator = Translator()
+   result = translator.translate('안녕하세요.', dest='en')
+   print(result.text)  # Good evening / Hello.
 
-   >>> translator.translate('veritas lux mea', src='la')
-   # <Translated src=la dest=en text=The truth is my light pronunciation=The truth is my light>
+   detected = translator.detect('Bonjour tout le monde')
+   print(detected.lang)  # fr
+
+You can also use the synchronous context manager:
+
+.. code-block:: python
+
+   from googletrans import SyncTranslator
+
+   with SyncTranslator() as translator:
+       result = translator.translate('안녕하세요.', dest='en')
+       print(result.text)
+
+~~~~~~~~~~~~~~~~~~~~~~~~~
+Asynchronous Usage (v4.x)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For modern async applications:
+
+.. code-block:: python
+
+   import asyncio
+   from googletrans import Translator
+
+   async def main():
+       async with Translator() as translator:
+           # Detect and translate to English (default)
+           result = await translator.translate('안녕하세요.')
+           print(result.text)
+
+           # Translate to Japanese
+           result = await translator.translate('안녕하세요.', dest='ja')
+           print(result.text)
+
+   asyncio.run(main())
 
 ~~~~~~~~~~~~~~~~~~~~~
 Customize service URL
 ~~~~~~~~~~~~~~~~~~~~~
 
-You can use another google translate domain for translation. If multiple
-URLs are provided it then randomly chooses a domain.
+You can use another Google Translate domain for translation:
 
-.. code:: python
+.. code-block:: python
 
-    >>> from googletrans import Translator
-    >>> translator = Translator(service_urls=[
-          'translate.google.com',
-          'translate.google.co.kr',
-        ])
+   from googletrans import SyncTranslator as Translator
+
+   translator = Translator(service_urls=[
+       'translate.google.com',
+       'translate.googleapis.com',
+   ])
 
 ~~~~~~~~~~~~~~~~~~~~~
 Advanced Usage (Bulk)
 ~~~~~~~~~~~~~~~~~~~~~
 
-Array can be used to translate a batch of strings in a single method
-call and a single HTTP session. The exact same method shown above work
-for arrays as well.
+Translate a batch of strings in a single call:
 
-.. code:: python
+.. code-block:: python
 
-    >>> translations = translator.translate(['The quick brown fox', 'jumps over', 'the lazy dog'], dest='ko')
-    >>> for translation in translations:
-    ...    print(translation.origin, ' -> ', translation.text)
-    # The quick brown fox  ->  빠른 갈색 여우
-    # jumps over  ->  이상 점프
-    # the lazy dog  ->  게으른 개
+   from googletrans import SyncTranslator as Translator
+
+   translator = Translator()
+   translations = translator.translate(['The quick brown fox', 'jumps over', 'the lazy dog'], dest='ko')
+   for translation in translations:
+       print(translation.origin, ' -> ', translation.text)
 
 ~~~~~~~~~~~~~~~~~~
 Language detection
 ~~~~~~~~~~~~~~~~~~
 
-The detect method, as its name implies, identifies the language used in
-a given sentence.
+Detect the language of text with confidence scores:
 
-.. code:: python
+.. code-block:: python
 
-    >>> translator.detect('이 문장은 한글로 쓰여졌습니다.')
-    # <Detected lang=ko confidence=0.27041003>
-    >>> translator.detect('この文章は日本語で書かれました。')
-    # <Detected lang=ja confidence=0.64889508>
-    >>> translator.detect('This sentence is written in English.')
-    # <Detected lang=en confidence=0.22348526>
-    >>> translator.detect('Tiu frazo estas skribita en Esperanto.')
-    # <Detected lang=eo confidence=0.10538048>
+   from googletrans import SyncTranslator as Translator
+
+   translator = Translator()
+   detected = translator.detect('이 문장은 한글로 쓰여졌습니다.')
+   print(detected.lang, detected.confidence)
 
 ---------
 API Guide
 ---------
-
 
 ======================
 googletrans.Translator
 ======================
 
 .. autoclass:: googletrans.Translator
+    :members:
+
+==========================
+googletrans.SyncTranslator
+==========================
+
+.. autoclass:: googletrans.SyncTranslator
     :members:
 
 ==================
