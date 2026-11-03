@@ -6,7 +6,8 @@ from googletrans.client import Translator
 
 
 async def _run_cli(args: argparse.Namespace) -> None:
-    async with Translator() as translator:
+    ipv4 = getattr(args, "ipv4", False)
+    async with Translator(ipv4=ipv4) as translator:
         if args.detect:
             result = await translator.detect(args.text)
             print(f"[{result.lang}, {result.confidence}] {args.text}")
@@ -39,6 +40,13 @@ def main() -> None:
     )
     parser.add_argument(
         "-c", "--detect", action="store_true", default=False, help="Detect language"
+    )
+    parser.add_argument(
+        "-4",
+        "--ipv4",
+        action="store_true",
+        default=False,
+        help="Force IPv4 resolution to prevent DNS timeout on networks with broken IPv6",
     )
     args = parser.parse_args()
     asyncio.run(_run_cli(args))

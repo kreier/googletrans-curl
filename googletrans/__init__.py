@@ -7,8 +7,9 @@ __all__ = (
     "LANGCODES",
     "TranslationError",
     "RateLimitError",
+    "CurlOpt",
 )
-__version__ = "4.1.0"
+__version__ = "4.1.1"
 
 
 from googletrans.client import SyncTranslator, Translator
@@ -18,3 +19,8 @@ from googletrans.constants import (
     RateLimitError,
     TranslationError,
 )
+
+try:
+    from curl_cffi import CurlOpt
+except ImportError:  # pragma: no cover
+    CurlOpt = None

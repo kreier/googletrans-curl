@@ -36,6 +36,16 @@ This roadmap outlines the path from initial fork foundation to the stable **4.3.
 
 ---
 
+## 4.1.1 — Network Resiliency & DNS Timeout Mitigation (Completed)
+
+**Goal:** Resolve DNS resolution timeouts on networks with broken IPv6 handling (Issue #1).
+
+- [x] Address Issue #1: Add `ipv4=True` / `ip_resolve` and `curl_options` to bypass IPv6 AAAA timeouts.
+- [x] Catch and normalize `curl_cffi.curl.CurlError` timeout code 28 to `ConnectTimeout`.
+- [x] Add `-4` / `--ipv4` flag to CLI `translate`.
+
+---
+
 ## 4.2.0 — Fork Ecosystem Mining
 
 **Goal:** Investigate improvements and patches across the ~740 forks of `py-googletrans`, documenting community history and inspiration for possible changes.

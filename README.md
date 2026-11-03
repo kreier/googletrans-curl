@@ -209,6 +209,33 @@ translator = Translator(
 
 Available impersonation presets for `curl-cffi` include: `"chrome"`, `"chrome110"`, `"chrome120"`, `"safari"`, `"safari15_3"`, `"safari15_5"`, `"edge99"`, `"edge101"`, etc.
 
+### Network Resiliency & Forcing IPv4
+
+On some networks, VPNs, or ISP configurations, IPv6 DNS resolution (AAAA records) or IPv6 routing hangs, resulting in:
+`CurlError: Failed to perform, curl: (28) Resolving timed out after 30004 milliseconds`
+
+You can force IPv4 resolution directly with `ipv4=True` or `ip_resolve="v4"`:
+
+```python
+from googletrans import Translator, SyncTranslator
+
+# Async with forced IPv4
+async with Translator(ipv4=True) as translator:
+    result = await translator.translate("안녕하세요.")
+    print(result.text)
+
+# Synchronous with forced IPv4
+translator = SyncTranslator(ipv4=True)
+result = translator.translate("안녕하세요.")
+
+# Advanced: custom libcurl options
+from googletrans import CurlOpt
+
+translator = Translator(curl_options={CurlOpt.IPRESOLVE: 1})
+```
+
+Supported `ip_resolve` values: `"v4"` (or `1`), `"v6"` (or `2`), `"any"` (or `0`).
+
 ---
 
 ## Advanced Usage
@@ -277,6 +304,9 @@ translate "veritas lux mea" -s la -d en
 
 # Translate text to Korean
 translate "Hello world" -d ko
+
+# Force IPv4 resolution (prevents 30s DNS timeout on broken IPv6 networks)
+translate "Hello world" -d ko -4
 
 # Detect language
 translate -c "안녕하세요."

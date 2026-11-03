@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.1.1] - 2026-11-03
+
+### Added
+- **First-Class IPv4 Resolution Option (`ipv4=True` / `ip_resolve="v4"`)**: Added `ipv4` and `ip_resolve` parameters to `Translator` and `SyncTranslator` to bypass IPv6 DNS queries (`CURL_IPRESOLVE_V4`), completely resolving 30-second libcurl timeouts (`Resolving timed out after 30004 milliseconds`) on networks/routers with broken IPv6 resolution (resolves Issue #1).
+- **Custom `curl_options` Support**: Added `curl_options` parameter to `Translator` and `SyncTranslator`, and exposed `.curl_options` property for passing arbitrary libcurl options directly to the underlying `curl_cffi` session.
+- **Exported `CurlOpt`**: Exposed `CurlOpt` from `googletrans` namespace for convenience (`from googletrans import CurlOpt`).
+- **CLI `-4` / `--ipv4` Flag**: Added `-4` / `--ipv4` option to the `translate` command-line tool.
+
+### Fixed
+- **Transport Exception Mapping for `CurlError`**: Properly caught `curl_cffi.curl.CurlError` code 28 (`CURLE_OPERATION_TIMEDOUT` / DNS resolve timeout) in both translation requests and token acquisition, correctly mapping it to `httpx.ConnectTimeout` and providing clean diagnostics instead of unhandled exceptions (resolves Issue #1).
+
+---
+
 ## [4.1.0] - 2026-10-08
 
 ### Added
