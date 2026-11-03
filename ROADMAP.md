@@ -36,7 +36,7 @@ This roadmap outlines the path from initial fork foundation to the stable **4.3.
 
 ---
 
-## 4.1.1 — Network Resiliency & DNS Timeout Mitigation
+## 4.1.1 — Network Resiliency & DNS Timeout Mitigation (Completed)
 
 **Goal:** Resolve DNS resolution timeouts on networks with broken IPv6 handling (Issue #1).
 

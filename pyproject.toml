@@ -1,6 +1,6 @@
 [project]
 name = "googletrans-curl"
-version = "4.1.0"
+version = "4.1.1"
 description = "A drop-in replacement for googletrans using curl-cffi to prevent HTTP 429 rate limits"
 readme = "README.md"
 requires-python = ">=3.8"

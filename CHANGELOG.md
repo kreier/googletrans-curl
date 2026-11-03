@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [4.1.1] - 2026-11-03
 
 ### Added
 - **First-Class IPv4 Resolution Option (`ipv4=True` / `ip_resolve="v4"`)**: Added `ipv4` and `ip_resolve` parameters to `Translator` and `SyncTranslator` to bypass IPv6 DNS queries (`CURL_IPRESOLVE_V4`), completely resolving 30-second libcurl timeouts (`Resolving timed out after 30004 milliseconds`) on networks/routers with broken IPv6 resolution (resolves Issue #1).
