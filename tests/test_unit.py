@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from googletrans import Translator
+from googletrans import CurlOpt, SyncTranslator, Translator
 from googletrans.cli import _run_cli
 
 
@@ -389,3 +389,161 @@ async def test_backticks_text_translation():
         assert res.src == "en"
 
     await translator.aclose()
+
+
+@pytest.mark.asyncio
+async def test_translator_ipv4_and_curl_options():
+    """Verify ipv4=True and curl_options configuration for issue #1."""
+    # Test ipv4=True flag
+    translator = Translator(transport="curl", ipv4=True)
+    assert translator.ipv4 is True
+    assert CurlOpt is not None
+    assert translator.curl_options[CurlOpt.IPRESOLVE] == 1
+    assert translator.client.curl_options[CurlOpt.IPRESOLVE] == 1
+    await translator.aclose()
+
+    # Test ip_resolve string variants
+    translator_v4 = Translator(transport="curl", ip_resolve="v4")
+    assert translator_v4.curl_options[CurlOpt.IPRESOLVE] == 1
+    await translator_v4.aclose()
+
+    translator_v6 = Translator(transport="curl", ip_resolve="v6")
+    assert translator_v6.curl_options[CurlOpt.IPRESOLVE] == 2
+    await translator_v6.aclose()
+
+    translator_any = Translator(transport="curl", ip_resolve="any")
+    assert translator_any.curl_options[CurlOpt.IPRESOLVE] == 0
+    await translator_any.aclose()
+
+    # Test custom curl_options
+    custom_opts = {CurlOpt.IPRESOLVE: 1}
+    translator_custom = Translator(transport="curl", curl_options=custom_opts)
+    assert translator_custom.curl_options[CurlOpt.IPRESOLVE] == 1
+    await translator_custom.aclose()
+
+    # Test invalid ip_resolve raises ValueError
+    with pytest.raises(ValueError, match="Invalid ip_resolve"):
+        Translator(ip_resolve="invalid_resolve")
+
+    with pytest.raises(ValueError, match="Invalid ip_resolve"):
+        Translator(ip_resolve=99)
+
+    with pytest.raises(ValueError, match="Invalid ip_resolve"):
+        Translator(ip_resolve=[1])
+
+    # Test httpx transport gracefully ignores curl_options
+    translator_httpx = Translator(transport="httpx", ipv4=True)
+    assert translator_httpx.ipv4 is True
+    await translator_httpx.aclose()
+
+
+def test_sync_translator_ipv4_and_curl_options():
+    """Verify SyncTranslator forwards ipv4 and curl_options correctly."""
+    with SyncTranslator(transport="curl", ipv4=True) as sync_trans:
+        assert sync_trans.ipv4 is True
+        assert CurlOpt is not None
+        assert sync_trans.curl_options[CurlOpt.IPRESOLVE] == 1
+        assert sync_trans.client.curl_options[CurlOpt.IPRESOLVE] == 1
+
+
+@pytest.mark.asyncio
+async def test_curl_error_timeout_mapped_to_connect_timeout():
+    """Verify CurlError(28) resolving timeout is mapped to ConnectTimeout (Issue #1)."""
+    from curl_cffi.curl import CurlError
+    from httpx import ConnectTimeout
+
+    # When DNS resolution times out (libcurl code 28), ConnectTimeout is raised
+    translator = Translator(transport="curl", raise_exception=True)
+    dns_timeout_err = CurlError("Failed to perform, curl: (28) Resolving timed out after 30004 milliseconds", 28)
+
+    with patch.object(translator.client, "get", new=AsyncMock(side_effect=dns_timeout_err)):
+        with pytest.raises(ConnectTimeout, match="Resolving timed out"):
+            await translator.translate("hello", dest="ko")
+
+    await translator.aclose()
+
+    # When general connection error occurs and raise_exception=False, returns fallback dummy data
+    translator_silent = Translator(service_urls=["translate.googleapis.com"], transport="curl", raise_exception=False)
+    conn_err = CurlError("Failed to connect to host", 7)
+    with patch.object(translator_silent.client, "get", new=AsyncMock(side_effect=conn_err)):
+        result = await translator_silent.translate("hello", dest="ko")
+        assert result.text == "hello"
+
+    await translator_silent.aclose()
+
+
+@pytest.mark.asyncio
+async def test_curl_error_in_token_acquirer():
+    """Verify CurlError during token acquisition is handled cleanly (Issue #1)."""
+    from curl_cffi.curl import CurlError
+    from httpx import ConnectTimeout
+
+    dns_timeout_err = CurlError("Failed to perform, curl: (28) Resolving timed out after 30004 milliseconds", 28)
+
+    # When raise_exception=True, raises ConnectTimeout
+    translator = Translator(service_urls=["translate.google.com"], raise_exception=True)
+    with patch.object(translator.token_acquirer, "do", new=AsyncMock(side_effect=dns_timeout_err)):
+        with pytest.raises(ConnectTimeout, match="Resolving timed out"):
+            await translator.translate("hello", dest="ko")
+
+    await translator.aclose()
+
+    # When raise_exception=False, falls back
+    translator_silent = Translator(service_urls=["translate.google.com"], raise_exception=False)
+    mock_body = json.dumps([
+        [["안녕하세요", "hello", None, None, 1]],
+        None,
+        "en",
+    ])
+    class MockResponse:
+        status_code = 200
+        text = mock_body
+
+    with patch.object(translator_silent.token_acquirer, "do", new=AsyncMock(side_effect=dns_timeout_err)):
+        with patch.object(translator_silent.client, "get", new=AsyncMock(return_value=MockResponse())):
+            result = await translator_silent.translate("hello", dest="ko")
+            assert result.text == "안녕하세요"
+
+    await translator_silent.aclose()
+
+
+@pytest.mark.asyncio
+async def test_cli_execution_with_ipv4_flag(capsys):
+    """Verify CLI tool supports -4 / --ipv4 flag."""
+    import argparse
+
+    args = argparse.Namespace(
+        text="hello",
+        dest="ko",
+        src="en",
+        detect=False,
+        ipv4=True,
+    )
+
+    mock_body = json.dumps([
+        [["안녕하세요", "hello", None, None, 1]],
+        None,
+        "en",
+    ])
+
+    class MockResponse:
+        status_code = 200
+        text = mock_body
+
+    with patch("googletrans.cli.Translator") as mock_cls:
+        instance = AsyncMock()
+        mock_cls.return_value.__aenter__.return_value = instance
+
+        from googletrans.models import Translated
+        instance.translate.return_value = Translated(
+            src="en",
+            dest="ko",
+            origin="hello",
+            text="안녕하세요",
+            pronunciation=None,
+        )
+
+        await _run_cli(args)
+        mock_cls.assert_called_once_with(ipv4=True)
+        captured = capsys.readouterr()
+        assert "안녕하세요" in captured.out

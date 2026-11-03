@@ -57,11 +57,14 @@ try:
     from curl_cffi.requests import AsyncSession
     from curl_cffi.requests.exceptions import RequestException as CurlRequestException
     from curl_cffi.requests.exceptions import Timeout as CurlTimeout
+    from curl_cffi.curl import CurlError, CurlOpt
     CURL_AVAILABLE = True
 except ImportError:  # pragma: no cover
     CURL_AVAILABLE = False
     CurlRequestException = Exception
     CurlTimeout = Exception
+    CurlError = Exception
+    CurlOpt = None
 
 
 class Translator:
@@ -87,6 +90,13 @@ class Translator:
     :param timeout: Definition of timeout.
     :param raise_exception: if `True` then raise exception if something goes wrong.
     :type raise_exception: boolean
+    :param curl_options: custom curl options dictionary passed directly to curl-cffi session.
+    :type curl_options: dict, optional
+    :param ipv4: if True, force IPv4 DNS resolution (sets CURLOPT_IPRESOLVE to CURL_IPRESOLVE_V4)
+                 to avoid 30s timeouts on networks with broken IPv6 resolution.
+    :type ipv4: boolean, default False
+    :param ip_resolve: IP resolution strategy ('v4', 'v6', 'any', or integer 0, 1, 2).
+    :type ip_resolve: str or int, optional
     """
 
     def __init__(
@@ -101,6 +111,9 @@ class Translator:
         transport: typing.Literal["auto", "curl", "httpx"] = "auto",
         impersonate: str = "chrome",
         proxies: typing.Optional[typing.Any] = None,
+        curl_options: typing.Optional[typing.Dict[typing.Any, typing.Any]] = None,
+        ipv4: bool = False,
+        ip_resolve: typing.Optional[typing.Union[int, str]] = None,
     ):
         if proxies is not None and proxy is None:
             proxy = proxies
@@ -124,6 +137,46 @@ class Translator:
 
         self.transport = "curl" if use_curl else "httpx"
         self.impersonate = impersonate
+        self.ipv4 = ipv4
+        self.ip_resolve = ip_resolve
+
+        resolved_curl_options: typing.Dict[typing.Any, typing.Any] = {}
+        if curl_options:
+            resolved_curl_options.update(curl_options)
+
+        ip_resolve_val: typing.Optional[int] = None
+        if ip_resolve is not None:
+            if isinstance(ip_resolve, str):
+                ip_clean = ip_resolve.lower().strip()
+                if ip_clean in ("v4", "ipv4", "4"):
+                    ip_resolve_val = 1
+                elif ip_clean in ("v6", "ipv6", "6"):
+                    ip_resolve_val = 2
+                elif ip_clean in ("any", "whatever", "0", "all"):
+                    ip_resolve_val = 0
+                else:
+                    raise ValueError(
+                        f"Invalid ip_resolve value: '{ip_resolve}'. Expected 'v4', 'v6', 'any', 0, 1, or 2."
+                    )
+            elif isinstance(ip_resolve, int):
+                if ip_resolve in (0, 1, 2):
+                    ip_resolve_val = ip_resolve
+                else:
+                    raise ValueError(
+                        f"Invalid ip_resolve value: {ip_resolve}. Expected 0, 1, or 2."
+                    )
+            else:
+                raise ValueError(
+                    f"Invalid ip_resolve type: {type(ip_resolve)}. Expected str or int."
+                )
+        elif ipv4:
+            ip_resolve_val = 1
+
+        if ip_resolve_val is not None:
+            opt_key = CurlOpt.IPRESOLVE if CurlOpt is not None else 113
+            resolved_curl_options[opt_key] = ip_resolve_val
+
+        self._curl_options = resolved_curl_options
 
         if use_curl:
             timeout_sec = None
@@ -140,6 +193,7 @@ class Translator:
                 "headers": {
                     "User-Agent": user_agent,
                 },
+                "curl_options": resolved_curl_options,
             }
             if timeout_sec is not None:
                 session_kwargs["timeout"] = timeout_sec
@@ -151,6 +205,10 @@ class Translator:
             self.client = AsyncSession(**session_kwargs)
             self.client.aclose = self.client.close
         else:
+            if resolved_curl_options:
+                logger.warning(
+                    "curl_options and ipv4/ip_resolve are only applicable when transport='curl'."
+                )
             self.client = httpx.AsyncClient(
                 http2=http2,
                 proxy=proxy,
@@ -186,6 +244,13 @@ class Translator:
         self.raise_exception = raise_exception
         self.list_operation_max_concurrency = list_operation_max_concurrency
 
+    @property
+    def curl_options(self) -> typing.Dict[typing.Any, typing.Any]:
+        """Access the underlying curl options dictionary."""
+        if hasattr(self.client, "curl_options"):
+            return self.client.curl_options
+        return getattr(self, "_curl_options", {})
+
     def _pick_service_url(self) -> str:
         if len(self.service_urls) == 1:
             return self.service_urls[0]
@@ -209,7 +274,39 @@ class Translator:
     ) -> typing.Tuple[typing.List[typing.Any], typing.Any]:
         token = "xxxx"  # dummy default value here as it is not used by api client
         if self.client_type == "webapp":
-            token = await self.token_acquirer.do(text)
+            try:
+                token = await self.token_acquirer.do(text)
+            except (CurlTimeout, httpx.TimeoutException) as exc:
+                if self.raise_exception:
+                    raise ConnectTimeout(str(exc)) from exc
+                logger.warning("Token acquisition timed out: %s. Using fallback token.", exc)
+            except CurlError as exc:
+                msg = str(exc).lower()
+                if getattr(exc, "code", None) == 28 or "timed out" in msg or "timeout" in msg:
+                    if self.raise_exception:
+                        raise ConnectTimeout(str(exc)) from exc
+                    logger.warning("Token acquisition timed out: %s. Using fallback token.", exc)
+                elif self.raise_exception:
+                    raise TranslationError(
+                        f"HTTP transport error during token acquisition: {exc}"
+                    ) from exc
+                else:
+                    logger.warning("Token acquisition failed: %s. Using fallback token.", exc)
+            except CurlRequestException as exc:
+                if "timeout" in str(exc).lower() or "timed out" in str(exc).lower():
+                    if self.raise_exception:
+                        raise ConnectTimeout(str(exc)) from exc
+                    logger.warning("Token acquisition timed out: %s. Using fallback token.", exc)
+                elif self.raise_exception:
+                    raise TranslationError(
+                        f"HTTP transport error during token acquisition: {exc}"
+                    ) from exc
+                else:
+                    logger.warning("Token acquisition failed: %s. Using fallback token.", exc)
+            except Exception as exc:
+                if self.raise_exception:
+                    raise
+                logger.warning("Token acquisition failed: %s. Using fallback token.", exc)
 
         params = utils.build_params(
             client=self.client_type,
@@ -225,6 +322,17 @@ class Translator:
             r = await self.client.get(url, params=params)
         except (CurlTimeout, httpx.TimeoutException) as exc:
             raise ConnectTimeout(str(exc)) from exc
+        except CurlError as exc:
+            msg = str(exc).lower()
+            if getattr(exc, "code", None) == 28 or "timed out" in msg or "timeout" in msg:
+                raise ConnectTimeout(str(exc)) from exc
+            if self.raise_exception:
+                raise TranslationError(
+                    f"HTTP transport error during translation request: {exc}"
+                ) from exc
+            logger.warning("HTTP transport error: %s. Returning fallback dummy data.", exc)
+            DUMMY_DATA[0][0][0] = text
+            return DUMMY_DATA, None
         except CurlRequestException as exc:
             if "timeout" in str(exc).lower() or "timed out" in str(exc).lower():
                 raise ConnectTimeout(str(exc)) from exc
@@ -571,6 +679,9 @@ class Translator:
             list_operation_max_concurrency=self.list_operation_max_concurrency,
             transport=self.transport,
             impersonate=self.impersonate,
+            curl_options=self.curl_options,
+            ipv4=self.ipv4,
+            ip_resolve=self.ip_resolve,
         ) as sync_trans:
             return sync_trans.translate(text, dest=dest, src=src, **kwargs)
 
@@ -586,6 +697,9 @@ class Translator:
             list_operation_max_concurrency=self.list_operation_max_concurrency,
             transport=self.transport,
             impersonate=self.impersonate,
+            curl_options=self.curl_options,
+            ipv4=self.ipv4,
+            ip_resolve=self.ip_resolve,
         ) as sync_trans:
             return sync_trans.detect(text, **kwargs)
 
@@ -605,6 +719,9 @@ class SyncTranslator:
         transport: typing.Literal["auto", "curl", "httpx"] = "auto",
         impersonate: str = "chrome",
         proxies: typing.Optional[typing.Any] = None,
+        curl_options: typing.Optional[typing.Dict[typing.Any, typing.Any]] = None,
+        ipv4: bool = False,
+        ip_resolve: typing.Optional[typing.Union[int, str]] = None,
     ):
         if proxies is not None and proxy is None:
             proxy = proxies
@@ -624,6 +741,9 @@ class SyncTranslator:
                 transport=transport,
                 impersonate=impersonate,
                 list_operation_max_concurrency=list_operation_max_concurrency,
+                curl_options=curl_options,
+                ipv4=ipv4,
+                ip_resolve=ip_resolve,
             )
 
         future = asyncio.run_coroutine_threadsafe(_init_client(), self._loop)
@@ -648,6 +768,22 @@ class SyncTranslator:
     @property
     def impersonate(self) -> str:
         return self._async_translator.impersonate
+
+    @property
+    def client(self) -> typing.Any:
+        return self._async_translator.client
+
+    @property
+    def curl_options(self) -> typing.Dict[typing.Any, typing.Any]:
+        return self._async_translator.curl_options
+
+    @property
+    def ipv4(self) -> bool:
+        return self._async_translator.ipv4
+
+    @property
+    def ip_resolve(self) -> typing.Optional[typing.Union[int, str]]:
+        return self._async_translator.ip_resolve
 
     def _run_coroutine(self, coro: typing.Coroutine) -> typing.Any:
         future = asyncio.run_coroutine_threadsafe(coro, self._loop)
