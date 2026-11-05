@@ -3,6 +3,8 @@ name = "googletrans-curl"
 version = "4.1.1"
 description = "A drop-in replacement for googletrans using curl-cffi to prevent HTTP 429 rate limits"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.8"
 dependencies = [
     "curl_cffi>=0.7.0",
